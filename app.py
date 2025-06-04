@@ -1,33 +1,35 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
+from tabs.pivot_utils import build_pivot_table
 
 st.set_page_config(layout="wide")
-st.title("📊 Дашборд по загруженным данным")
+st.title("📊 Ежемесячный дашборд")
 
 uploaded_file = st.file_uploader("Загрузите Excel-файл", type=["xlsx"])
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file, sheet_name=0)
 
-    st.subheader("📋 Исходные данные")
-    st.dataframe(df)
+    tabs = st.tabs([
+        "🧭 По направлениям (ч/д)",
+        "💸 По направлениям (руб.)",
+        "👨‍💼 По CoStream (ч/д)",
+    ])
 
-    st.sidebar.header("🔍 Фильтры")
-    month = st.sidebar.selectbox("Месяц", options=df["Месяц"].dropna().unique())
-    stream = st.sidebar.selectbox("Стрим", options=["Все"] + df["Стрим"].dropna().unique().tolist())
+    with tabs[0]:
+        st.subheader("🧭 Ресурсы по Направлению в ч/д")
+        table = build_pivot_table(df, "Направление", "Факт, ч/д")
+        st.dataframe(table.style.format("{:.2f}"), use_container_width=True)
 
-    filtered_df = df[df["Месяц"] == month]
-    if stream != "Все":
-        filtered_df = filtered_df[filtered_df["Стрим"] == stream]
+    with tabs[1]:
+        st.subheader("💸 Стоимость по Направлению")
+        table = build_pivot_table(df, "Направление", "Стоимость, руб.")
+        st.dataframe(table.style.format("{:,.0f}"), use_container_width=True)
 
-    st.subheader("📊 Отфильтрованные данные")
-    st.dataframe(filtered_df)
+    with tabs[2]:
+        st.subheader("👨‍💼 Ресурсы по CoStream в ч/д")
+        table = build_pivot_table(df, "CoStream", "Факт, ч/д")
+        st.dataframe(table.style.format("{:.2f}"), use_container_width=True)
 
-    chart = alt.Chart(filtered_df).mark_bar().encode(
-        x=alt.X("ФИО специалиста:N", sort='-y'),
-        y="Стоимость, руб.:Q",
-        tooltip=["ФИО специалиста", "Стоимость, руб."]
-    ).properties(title="Стоимость по специалистам")
-
-    st.altair_chart(chart, use_container_width=True)
+else:
+    st.info("Пожалуйста, загрузите Excel-файл для начала работы.")
